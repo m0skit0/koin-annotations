@@ -21,7 +21,7 @@ internal class KoinModuleProcessor : AbstractProcessor() {
 
     override fun process(set: MutableSet<out TypeElement>, roundEnvironment: RoundEnvironment): Boolean {
 
-        if (set.isEmpty()) return true
+        if (set.isEmpty()) return false
 
         // TODO Check if annotated function has no parameters and returns org.koin.core.module.Module
         // TODO Check function access is at least internal
