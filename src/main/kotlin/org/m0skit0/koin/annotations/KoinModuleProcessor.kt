@@ -10,7 +10,6 @@ import org.koin.core.module.Module
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.TypeElement
-import javax.tools.Diagnostic
 
 private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
 
@@ -21,7 +20,8 @@ private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
 internal class KoinModuleProcessor : AbstractProcessor() {
 
     override fun process(set: MutableSet<out TypeElement>, roundEnvironment: RoundEnvironment): Boolean {
-        processingEnv.messager.printMessage(Diagnostic.Kind.WARNING, "KoinModuleProcessor >> Process")
+
+        if (set.isEmpty()) return true
 
         // TODO Check if annotated function has no parameters and returns org.koin.core.module.Module
         // TODO Check function access is at least internal
@@ -29,16 +29,15 @@ internal class KoinModuleProcessor : AbstractProcessor() {
         roundEnvironment.getElementsAnnotatedWith(KoinModule::class.java).associate { element ->
             "${element.simpleName}" to "${(element.enclosingElement as TypeElement).qualifiedName}"
         }.run {
-            if (isNotEmpty()) {
-                val initializeKoinModulesFunSpec = initializeKoinModulesFunSpec(this)
-                FileSpec.builder("org.m0skit0.koin.annotations", "KoinAnnotations")
-                    .addImport("org.koin.core.context", "loadKoinModules")
-                    .addImport("org.koin.dsl", "module")
-                    .addFunction(initializeKoinModulesFunSpec)
-                    .build()
-                    .writeTo(processingEnv.filer)
-            }
+            val initializeKoinModulesFunSpec = initializeKoinModulesFunSpec(this)
+            FileSpec.builder("org.m0skit0.koin.annotations", "KoinAnnotations")
+                .addImport("org.koin.core.context", "loadKoinModules")
+                .addImport("org.koin.dsl", "module")
+                .addFunction(initializeKoinModulesFunSpec)
+                .build()
+                .writeTo(processingEnv.filer)
         }
+
         return true
     }
 
