@@ -1,4 +1,4 @@
-package org.m0skit0.koin.annotations
+package org.m0skit0.koin.annotation
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.SOURCE)
