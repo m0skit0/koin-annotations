@@ -1,6 +1,8 @@
 package org.m0skit0.koin.annotation
 
 import com.google.auto.service.AutoService
+import org.m0skit0.koin.generation.KoinModuleFunction
+import org.m0skit0.koin.generation.KoinModuleHelperGenerator
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.TypeElement

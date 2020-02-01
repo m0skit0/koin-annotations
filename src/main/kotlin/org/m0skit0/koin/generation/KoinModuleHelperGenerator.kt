@@ -1,4 +1,4 @@
-package org.m0skit0.koin.annotation
+package org.m0skit0.koin.generation
 
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
