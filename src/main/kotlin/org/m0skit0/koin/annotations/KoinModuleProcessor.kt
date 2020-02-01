@@ -26,31 +26,39 @@ internal class KoinModuleProcessor : AbstractProcessor() {
         // TODO Check if annotated function has no parameters and returns org.koin.core.module.Module
         // TODO Check function access is at least internal
         // TODO Process top-level functions correctly
-        roundEnvironment.getElementsAnnotatedWith(KoinModule::class.java).associate { element ->
-            "${element.simpleName}" to "${(element.enclosingElement as TypeElement).qualifiedName}"
-        }.run {
-            val initializeKoinModulesFunSpec = initializeKoinModulesFunSpec(this)
-            FileSpec.builder("org.m0skit0.koin.annotations", "KoinAnnotations")
-                .addImport("org.koin.core.context", "loadKoinModules")
-                .addImport("org.koin.dsl", "module")
-                .addFunction(initializeKoinModulesFunSpec)
-                .build()
-                .writeTo(processingEnv.filer)
+
+        roundEnvironment.annotatedFunctions().let { annotatedFunctions ->
+            annotatedFunctions.toListOfKoinModulesFunSpec().let { listOfKoinModulesFunSpec ->
+                listOfKoinModulesFileSpec(listOfKoinModulesFunSpec)
+                    .writeTo(processingEnv.filer)
+            }
         }
 
         return true
     }
 
-    private fun initializeKoinModulesFunSpec(modules: Map<String, String>): FunSpec {
-        val modulesList = modules.map { (key, value) -> "$value.$key()"}.joinToString(", ")
-        return FunSpec.builder("listOfKoinModules")
+    private fun Map<String, String>.toListOfKoinModulesFunSpec(): FunSpec =
+        FunSpec.builder("listOfKoinModules")
             .addModifiers(KModifier.INTERNAL)
             .returns(List::class.asClassName().parameterizedBy(Module::class.asClassName()))
             .addCode("""
                 |return listOf(
-                |   $modulesList
+                |   ${map { it.toFunctionQualifiedName() }.joinToString(", ")}
                 |)
                 """.trimMargin())
             .build()
-    }
+
+    private fun RoundEnvironment.annotatedFunctions(): Map<String, String> =
+        getElementsAnnotatedWith(KoinModule::class.java).associate { element ->
+            "${element.simpleName}" to "${(element.enclosingElement as TypeElement).qualifiedName}"
+        }
+
+    private fun Map.Entry<String, String>.toFunctionQualifiedName(): String = "$value.$key()"
+
+    private fun listOfKoinModulesFileSpec(koinModules: FunSpec): FileSpec =
+        FileSpec.builder("org.m0skit0.koin.annotations", "KoinAnnotations")
+            .addImport("org.koin.core.context", "loadKoinModules")
+            .addImport("org.koin.dsl", "module")
+            .addFunction(koinModules)
+            .build()
 }
