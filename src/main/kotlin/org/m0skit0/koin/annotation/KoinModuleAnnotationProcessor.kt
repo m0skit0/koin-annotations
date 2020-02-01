@@ -1,11 +1,16 @@
 package org.m0skit0.koin.annotation
 
 import com.google.auto.service.AutoService
+import com.squareup.kotlinpoet.asTypeName
+import org.koin.core.module.Module
 import org.m0skit0.koin.generation.KoinModuleFunction
 import org.m0skit0.koin.generation.KoinModuleHelperGenerator
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
+import javax.lang.model.element.Element
+import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
+import javax.tools.Diagnostic
 
 private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
 
@@ -19,23 +24,56 @@ internal class KoinModuleAnnotationProcessor : AbstractProcessor() {
 
         if (set.isEmpty()) return false
 
-        // TODO Check if annotated functions has no parameters and returns org.koin.core.module.Module
-        // TODO Check function access is at least internal
-        // TODO Process top-level functions correctly
-        // TODO Process functions in instance classes correctly
+        roundEnvironment.getElementsAnnotatedWith(KoinModule::class.java).run {
 
-        roundEnvironment.annotationsToKoinModuleFunctions().let { koinModuleFunctions ->
-            KoinModuleHelperGenerator(processingEnv.filer, koinModuleFunctions).generate()
+            // TODO Check element type (must be a function)
+
+            checkFunctionVisibility()
+            checkFunctionParameters()
+            checkFunctionReturnType()
+
+            // TODO Check function access is at least internal
+            // TODO Process top-level functions correctly
+            // TODO Process functions in instance classes correctly
+
+            toKoinModuleFunctions().let { koinModuleFunctions ->
+                KoinModuleHelperGenerator(processingEnv.filer, koinModuleFunctions).generate()
+            }
         }
 
         return true
     }
 
-    private fun RoundEnvironment.annotationsToKoinModuleFunctions(): Iterable<KoinModuleFunction> =
-        getElementsAnnotatedWith(KoinModule::class.java).map { element ->
+    private fun Set<Element>.toKoinModuleFunctions(): Iterable<KoinModuleFunction> =
+        map { element ->
             KoinModuleFunction(
                 element.simpleName.toString(),
                 (element.enclosingElement as TypeElement).qualifiedName.toString()
             )
         }
+
+    private fun Set<Element>.checkFunctionParameters() {
+        forEachExecutableElement { element ->
+            if (element.parameters.isNotEmpty()) {
+                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Function cannot have parameters")
+            }
+        }
+    }
+
+    private fun Set<Element>.checkFunctionReturnType() {
+        forEachExecutableElement { element ->
+            val koinModuleTypeName = Module::class.asTypeName()
+            if (element.returnType.asTypeName() != koinModuleTypeName) {
+                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Function must return a Koin Module")
+            }
+        }
+    }
+
+    private fun Set<Element>.checkFunctionVisibility() {
+        forEachExecutableElement { element ->
+            if (!element.modifiers.contains(Modifier.PUBLIC)) {
+                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Function must be public")
+            }
+        }
+    }
 }
