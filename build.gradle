@@ -6,7 +6,7 @@ apply plugin: 'kotlin-kapt'
 apply plugin: 'java-library'
 
 group 'org.m0skit0.koin'
-version '0.0.1'
+version '0.1.0'
 
 repositories {
     mavenCentral()
