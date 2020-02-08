@@ -2,9 +2,13 @@ package org.m0skit0.koin.annotation
 
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.asTypeName
+import org.koin.core.KoinComponent
+import org.koin.core.get
 import org.koin.core.module.Module
-import org.m0skit0.koin.di.getKoinModuleHelperGenerator
+import org.m0skit0.koin.di.NAMED_KOIN_MODULE_HELPER_GENERATOR
+import org.m0skit0.koin.di.initializeKoin
 import org.m0skit0.koin.generation.KoinModuleFunction
+import org.m0skit0.koin.generation.KoinModuleHelperGenerator
 import org.m0skit0.koin.generation.toKoinModuleFunction
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
@@ -20,7 +24,12 @@ private const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "kapt.kotlin.generated"
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SupportedOptions(KAPT_KOTLIN_GENERATED_OPTION_NAME)
 @SupportedAnnotationTypes("org.m0skit0.koin.annotation.KoinModule")
-internal class KoinModuleAnnotationProcessor : AbstractProcessor() {
+internal class KoinModuleAnnotationProcessor : AbstractProcessor(), KoinComponent {
+
+    override fun init(processingEnvironment: ProcessingEnvironment) {
+        super.init(processingEnvironment)
+        initializeKoin()
+    }
 
     override fun process(set: MutableSet<out TypeElement>, roundEnvironment: RoundEnvironment): Boolean {
 
@@ -36,8 +45,9 @@ internal class KoinModuleAnnotationProcessor : AbstractProcessor() {
             // TODO Process top-level functions correctly
             // TODO Process functions in instance classes correctly
 
-            toKoinModuleFunctions().let { koinModuleFunctions ->
-                getKoinModuleHelperGenerator(processingEnv.filer, koinModuleFunctions).generate()
+            map { it.toKoinModuleFunction() }.let { koinModuleFunctions ->
+                get<(Filer, Iterable<KoinModuleFunction>) -> KoinModuleHelperGenerator>(NAMED_KOIN_MODULE_HELPER_GENERATOR)
+                    .invoke(processingEnv.filer, koinModuleFunctions).generate()
             }
         }
 
@@ -82,8 +92,6 @@ internal class KoinModuleAnnotationProcessor : AbstractProcessor() {
             }
         }
     }
-
-    private fun Set<Element>.toKoinModuleFunctions(): Iterable<KoinModuleFunction> = map { it.toKoinModuleFunction() }
 
     private fun error(message: String, element: Element) {
         processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, message, element)
