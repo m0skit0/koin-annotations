@@ -3,8 +3,9 @@ package org.m0skit0.koin.annotation
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.asTypeName
 import org.koin.core.module.Module
+import org.m0skit0.koin.di.getKoinModuleHelperGenerator
 import org.m0skit0.koin.generation.KoinModuleFunction
-import org.m0skit0.koin.generation.KoinModuleHelperGeneratorImpl
+import org.m0skit0.koin.generation.toKoinModuleFunction
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.Element
@@ -36,7 +37,7 @@ internal class KoinModuleAnnotationProcessor : AbstractProcessor() {
             // TODO Process functions in instance classes correctly
 
             toKoinModuleFunctions().let { koinModuleFunctions ->
-                KoinModuleHelperGeneratorImpl(processingEnv.filer, koinModuleFunctions).generate()
+                getKoinModuleHelperGenerator(processingEnv.filer, koinModuleFunctions).generate()
             }
         }
 
@@ -82,13 +83,7 @@ internal class KoinModuleAnnotationProcessor : AbstractProcessor() {
         }
     }
 
-    private fun Set<Element>.toKoinModuleFunctions(): Iterable<KoinModuleFunction> =
-        map { element ->
-            KoinModuleFunction(
-                element.simpleName.toString(),
-                (element.enclosingElement as TypeElement).qualifiedName.toString()
-            )
-        }
+    private fun Set<Element>.toKoinModuleFunctions(): Iterable<KoinModuleFunction> = map { it.toKoinModuleFunction() }
 
     private fun error(message: String, element: Element) {
         processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, message, element)
