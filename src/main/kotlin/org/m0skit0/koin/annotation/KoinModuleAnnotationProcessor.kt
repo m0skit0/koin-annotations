@@ -4,10 +4,11 @@ import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.asTypeName
 import org.koin.core.module.Module
 import org.m0skit0.koin.generation.KoinModuleFunction
-import org.m0skit0.koin.generation.KoinModuleHelperGenerator
+import org.m0skit0.koin.generation.KoinModuleHelperGeneratorImpl
 import javax.annotation.processing.*
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.Element
+import javax.lang.model.element.ElementKind
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
 import javax.tools.Diagnostic
@@ -26,22 +27,59 @@ internal class KoinModuleAnnotationProcessor : AbstractProcessor() {
 
         roundEnvironment.getElementsAnnotatedWith(KoinModule::class.java).run {
 
-            // TODO Check element type (must be a function)
+            checkElementKind()
 
-            checkFunctionVisibility()
-            checkFunctionParameters()
-            checkFunctionReturnType()
+            checkFunction()
 
             // TODO Check function access is at least internal
             // TODO Process top-level functions correctly
             // TODO Process functions in instance classes correctly
 
             toKoinModuleFunctions().let { koinModuleFunctions ->
-                KoinModuleHelperGenerator(processingEnv.filer, koinModuleFunctions).generate()
+                KoinModuleHelperGeneratorImpl(processingEnv.filer, koinModuleFunctions).generate()
             }
         }
 
         return true
+    }
+
+    private fun Set<Element>.checkElementKind() {
+        forEach { element ->
+            if (element.kind != ElementKind.METHOD) {
+                error("Annotated element must be a function", element)
+            }
+        }
+    }
+
+    private fun Set<Element>.checkFunction() {
+        checkFunctionVisibility()
+        checkFunctionParameters()
+        checkFunctionReturnType()
+    }
+
+    private fun Set<Element>.checkFunctionParameters() {
+        forEachExecutableElement { element ->
+            if (element.parameters.isNotEmpty()) {
+                error("Function cannot have parameters", element)
+            }
+        }
+    }
+
+    private fun Set<Element>.checkFunctionReturnType() {
+        forEachExecutableElement { element ->
+            val koinModuleTypeName = Module::class.asTypeName()
+            if (element.returnType.asTypeName() != koinModuleTypeName) {
+                error("Function must return a Koin Module", element)
+            }
+        }
+    }
+
+    private fun Set<Element>.checkFunctionVisibility() {
+        forEachExecutableElement { element ->
+            if (!element.modifiers.contains(Modifier.PUBLIC)) {
+                error("Function must be public", element)
+            }
+        }
     }
 
     private fun Set<Element>.toKoinModuleFunctions(): Iterable<KoinModuleFunction> =
@@ -52,28 +90,7 @@ internal class KoinModuleAnnotationProcessor : AbstractProcessor() {
             )
         }
 
-    private fun Set<Element>.checkFunctionParameters() {
-        forEachExecutableElement { element ->
-            if (element.parameters.isNotEmpty()) {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Function cannot have parameters")
-            }
-        }
-    }
-
-    private fun Set<Element>.checkFunctionReturnType() {
-        forEachExecutableElement { element ->
-            val koinModuleTypeName = Module::class.asTypeName()
-            if (element.returnType.asTypeName() != koinModuleTypeName) {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Function must return a Koin Module")
-            }
-        }
-    }
-
-    private fun Set<Element>.checkFunctionVisibility() {
-        forEachExecutableElement { element ->
-            if (!element.modifiers.contains(Modifier.PUBLIC)) {
-                processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "Function must be public")
-            }
-        }
+    private fun error(message: String, element: Element) {
+        processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, message, element)
     }
 }
