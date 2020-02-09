@@ -95,5 +95,6 @@ internal class KoinModuleAnnotationProcessor : AbstractProcessor(), KoinComponen
 
     private fun error(message: String, element: Element) {
         processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, message, element)
+        throw IllegalArgumentException(message)
     }
 }
