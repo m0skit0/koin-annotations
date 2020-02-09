@@ -25,7 +25,7 @@ internal class KoinModuleHelperGeneratorImpl(
             .returns(List::class.asClassName().parameterizedBy(Module::class.asClassName()))
             .addCode("""
                 |return listOf(
-                |   ${map { it.toFunctionQualifiedName() }.joinToString(", ")}
+                |    ${joinToString(", ") { it.toFunctionQualifiedName() }}
                 |)
                 """.trimMargin())
             .build()
@@ -34,8 +34,6 @@ internal class KoinModuleHelperGeneratorImpl(
 
     private fun listOfKoinModulesToFileSpec(koinModules: FunSpec): FileSpec =
         FileSpec.builder("org.m0skit0.koin.annotation", "KoinModuleHelper")
-            .addImport("org.koin.core.context", "loadKoinModules")
-            .addImport("org.koin.dsl", "module")
             .addFunction(koinModules)
             .build()
 }
