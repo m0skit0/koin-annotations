@@ -1,5 +1,7 @@
 # Koin Annotations
 
+## This library is now obsolete and won't be maintained anymore since [Koin now already supports annotations](https://insert-koin.io/docs/reference/koin-annotations/start/).
+
 Koin Annotations is a helper library for Koin that implements annotations to simplify the use of Koin.
 
 ## @KoinModule
